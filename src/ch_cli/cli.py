@@ -51,9 +51,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("table", help="table or db.table")
     p.add_argument("--ts", required=True, help="timestamp column, e.g. received_at")
     p.add_argument("-w", "--window", default="5m", help="window for rows_in_window (default: 5m)")
+    p.add_argument("--lookback", default="1d", help="only scan this far back (default: 1d)")
     p.add_argument("-d", "--database")
     p = with_cluster(sub.add_parser("replicas", help="replication state per replicated table"))
-    p.add_argument("--problems", action="store_true", help="only readonly, expired, delayed or queued tables")
+    p.add_argument(
+        "--problems",
+        action="store_true",
+        help="only readonly, expired, delayed (> --min-delay) or queue > 100",
+    )
+    p.add_argument(
+        "--min-delay", type=int, default=60, help="seconds of delay that count as a problem (default: 60)"
+    )
     p = with_cluster(sub.add_parser("mutations", help="mutations not done yet (with --all: recent ones)"))
     p.add_argument("--all", action="store_true", dest="include_done")
     p.add_argument("-n", "--limit", type=int, default=50)
@@ -77,9 +85,9 @@ def build_sql(args: argparse.Namespace) -> str:
         case "disk":
             return commands.disk(cluster)
         case "fresh":
-            return commands.fresh(args.table, args.ts, args.window, args.database)
+            return commands.fresh(args.table, args.ts, args.window, args.database, args.lookback)
         case "replicas":
-            return commands.replicas(args.problems, cluster)
+            return commands.replicas(args.problems, cluster, args.min_delay)
         case "mutations":
             return commands.mutations(args.include_done, args.limit, cluster)
         case "merges":

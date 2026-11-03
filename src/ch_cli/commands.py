@@ -6,6 +6,8 @@ import re
 
 SYSTEM_DATABASES = "('system', 'INFORMATION_SCHEMA', 'information_schema')"
 _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+# Cluster names are string literals, so `mongodb-logs` is valid; quotes and backslashes are not.
+_CLUSTER = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9_.-]*$")
 _DURATION = re.compile(r"^(\d+)([smhd])$")
 _UNITS = {"s": "SECOND", "m": "MINUTE", "h": "HOUR", "d": "DAY"}
 
@@ -35,10 +37,16 @@ def interval(duration: str) -> str:
     return f"INTERVAL {match.group(1)} {_UNITS[match.group(2)]}"
 
 
+def cluster_name(name: str) -> str:
+    if not _CLUSTER.match(name):
+        raise ValueError(f"invalid cluster name: {name!r}")
+    return name
+
+
 def source(table: str, cluster: str | None) -> str:
     """`system.<table>` on this server, or on every replica of `cluster`."""
     if cluster:
-        return f"clusterAllReplicas('{ident(cluster)[1:-1]}', system.{ident(table)[1:-1]})"
+        return f"clusterAllReplicas('{cluster_name(cluster)}', system.{ident(table)[1:-1]})"
     return f"system.{ident(table)[1:-1]}"
 
 
@@ -119,7 +127,7 @@ FROM {source("disks", cluster)}
 ORDER BY host, name"""
 
 
-def fresh(table: str, ts: str, window: str = "5m", database: str | None = None) -> str:
+def fresh(table: str, ts: str, window: str = "5m", database: str | None = None, lookback: str = "1d") -> str:
     db, name = table_ref(table)
     db = db or database
     target = f"{ident(db)}.{ident(name)}" if db else ident(name)
@@ -128,12 +136,15 @@ def fresh(table: str, ts: str, window: str = "5m", database: str | None = None) 
     max({column}) AS last,
     dateDiff('second', max({column}), now()) AS lag_s,
     countIf({column} > now() - {interval(window)}) AS rows_in_window
-FROM {target}"""
+FROM {target}
+-- Bounded so the scan prunes partitions; no rows in the lookback gives a NULL `last`.
+WHERE {column} > now() - {interval(lookback)}"""
 
 
-def replicas(problems_only: bool = False, cluster: str | None = None) -> str:
+def replicas(problems_only: bool = False, cluster: str | None = None, min_delay: int = 60) -> str:
+    # A few seconds of delay and a short queue are normal while inserts keep arriving.
     where = (
-        "WHERE is_readonly OR is_session_expired OR absolute_delay > 0 OR queue_size > 0"
+        f"WHERE is_readonly OR is_session_expired OR absolute_delay > {int(min_delay)} OR queue_size > 100"
         if problems_only
         else ""
     )

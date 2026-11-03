@@ -51,8 +51,8 @@ Use a read-only user. A profile with `readonly = 2` still lets ch-cli set `log_c
 | `tables [-d DB] [-n N]` | tables by size: engine, rows, size, parts, last write, TTL |
 | `fields TABLE` | columns: type, default, codec, compressed/uncompressed size, ratio, sorting key |
 | `disk` | free/total/used % per disk |
-| `fresh TABLE --ts COL [-w 5m]` | newest row, lag in seconds, rows in the window: is data still arriving? |
-| `replicas [--problems]` | replication state per replicated table |
+| `fresh TABLE --ts COL [-w 5m] [--lookback 1d]` | newest row, lag in seconds, rows in the window: is data still arriving? Scans only `--lookback` |
+| `replicas [--problems] [--min-delay 60]` | replication state per replicated table; `--problems` keeps readonly, expired, delayed or queue > 100 |
 | `mutations [--all] [-n N]` | unfinished mutations (or recent ones) with the last failure |
 | `merges` | running merges with progress and size |
 | `slow [--since 1h] [--min-ms 1000] [-n N]` | slowest queries from `system.query_log` |

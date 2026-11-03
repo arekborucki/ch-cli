@@ -39,6 +39,7 @@ def test_interval_rejects_garbage():
 def test_source_local_and_cluster():
     assert commands.source("replicas", None) == "system.replicas"
     assert commands.source("replicas", "mercury") == "clusterAllReplicas('mercury', system.replicas)"
+    assert commands.source("disks", "mongodb-logs") == "clusterAllReplicas('mongodb-logs', system.disks)"
     with pytest.raises(ValueError):
         commands.source("replicas", "x', system.users) --")
 
@@ -48,6 +49,8 @@ def test_fresh_quotes_identifiers():
     assert "FROM `mercury`.`events_raw`" in sql
     assert "max(`received_at`)" in sql
     assert "INTERVAL 5 MINUTE" in sql
+    assert "WHERE `received_at` > now() - INTERVAL 1 DAY" in sql
+    assert "INTERVAL 2 HOUR" in commands.fresh("t", "ts", lookback="2h")
 
 
 def test_fields_uses_given_database():
@@ -60,7 +63,8 @@ def test_filters_and_limits():
     assert "t.database = 'mercury'" in commands.tables("mercury")
     assert "WHERE NOT is_done" in commands.mutations()
     assert "WHERE NOT is_done" not in commands.mutations(include_done=True)
-    assert "WHERE is_readonly" in commands.replicas(problems_only=True)
+    assert "absolute_delay > 60" in commands.replicas(problems_only=True)
+    assert "absolute_delay > 5" in commands.replicas(problems_only=True, min_delay=5)
     assert "query_duration_ms >= 5000" in commands.slow(min_ms=5000)
 
 
