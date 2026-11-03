@@ -3,12 +3,12 @@ revision = 3
 requires-python = ">=3.11"
 
 [options]
-exclude-newer = "2026-10-27T12:44:49.221734Z"
+exclude-newer = "2026-10-27T13:11:57.637393Z"
 exclude-newer-span = "P7D"
 
 [[package]]
 name = "ch-cli"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 
 [package.dev-dependencies]
