@@ -117,7 +117,13 @@ def run(args: argparse.Namespace) -> int:
     if args.command == "ping":
         print(client.ping())
         return 0
-    sys.stdout.write(client.query(sql, output_format(args)))
+    fmt = output_format(args)
+    result = client.query(sql, fmt)
+    if result:
+        sys.stdout.write(result)
+    elif fmt.startswith("Pretty"):
+        # Pretty formats print nothing for an empty result; say so on stderr, keeping stdout clean.
+        print("(no rows)", file=sys.stderr)
     return 0
 
 

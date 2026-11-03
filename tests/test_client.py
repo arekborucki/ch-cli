@@ -28,7 +28,7 @@ class FakeClickHouse(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b"Code: 62. DB::Exception: Syntax error")
             return
-        self._reply(200, b'{"x":1}\n')
+        self._reply(200, b"" if "empty" in body else b'{"x":1}\n')
 
     def _reply(self, status, payload):
         self.send_response(status)
@@ -75,6 +75,15 @@ def test_query_error_carries_code(server):
 def test_unreachable_server():
     with pytest.raises(QueryError, match="cannot reach"):
         Client(Profile(name="t", url="http://127.0.0.1:9", user="u", password=""), timeout=2).ping()
+
+
+def test_cli_empty_result_says_no_rows_only_in_human_mode(server, monkeypatch, capsys):
+    monkeypatch.setenv("CH_CLI_CONFIG", "/nonexistent")
+    assert main(["--url", server, "-H", "sql", "empty"]) == 0
+    out = capsys.readouterr()
+    assert (out.out, out.err) == ("", "(no rows)\n")
+    assert main(["--url", server, "sql", "empty"]) == 0
+    assert capsys.readouterr() == ("", "")
 
 
 def test_cli_human_format_and_exit_codes(server, monkeypatch, capsys):

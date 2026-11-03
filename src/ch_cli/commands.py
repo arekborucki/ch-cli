@@ -70,10 +70,11 @@ def tables(database: str | None = None, limit: int = 50) -> str:
     t.database AS database,
     t.name AS table,
     t.engine AS engine,
-    t.total_rows AS rows,
-    formatReadableSize(t.total_bytes) AS size,
-    p.parts AS parts,
-    p.last_write AS last_write,
+    -- Views have no rows, size or parts: show empty cells, not NULL and 1970-01-01.
+    ifNull(toString(t.total_rows), '') AS rows,
+    if(t.total_bytes IS NULL, '', formatReadableSize(t.total_bytes)) AS size,
+    if(p.parts = 0, '', toString(p.parts)) AS parts,
+    if(p.parts = 0, '', toString(p.last_write)) AS last_write,
     extract(t.engine_full, 'TTL (.+?)(?: SETTINGS |$)') AS ttl
 FROM system.tables AS t
 LEFT JOIN (
