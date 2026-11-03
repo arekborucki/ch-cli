@@ -1,0 +1,18 @@
+# ~/.config/ch-cli/config.toml
+# Passwords never live in this file: use password_env or password_cmd.
+default = "local"
+
+[profiles.local]
+url = "http://localhost:8123"
+user = "default"
+
+[profiles.prod]
+url = "http://clickhouse.example.internal:8123"
+user = "readonly"
+password_env = "CH_PROD_PASSWORD"
+
+[profiles.k8s]
+url = "http://clickhouse.example.internal:8123"
+user = "readonly"
+# Any command that prints the password, e.g. from a Kubernetes Secret or a password manager.
+password_cmd = "kubectl -n clickhouse get secret clickhouse-credentials -o jsonpath='{.data.password}' | base64 -d"

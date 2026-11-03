@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ch-cli"
+version = "0.1.0"
+description = "CLI for ClickHouse diagnostics: health, tables, replication, merges, mutations, slow queries"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+keywords = ["clickhouse", "cli", "diagnostics"]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Topic :: Database",
+]
+
+[project.scripts]
+ch-cli = "ch_cli.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
