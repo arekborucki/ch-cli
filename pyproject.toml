@@ -9,6 +9,7 @@ description = "CLI for ClickHouse diagnostics: health, tables, replication, merg
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
+license = "Apache-2.0"
 keywords = ["clickhouse", "cli", "diagnostics"]
 classifiers = [
     "Environment :: Console",
