@@ -216,3 +216,40 @@ WHERE event_time > now() - {interval(since)}
   AND query_duration_ms >= {int(min_ms)}
 ORDER BY query_duration_ms DESC
 LIMIT {int(limit)}"""
+
+
+# clickhouse-backup (Altinity) exposes its REST API as URL tables in `system` when it runs as
+# `server` with integration tables enabled; they answer only on the server that has the sidecar.
+BACKUP_HINT = (
+    "backups needs the clickhouse-backup integration tables (system.backup_list, system.backup_actions); "
+    "they exist only on a server that runs the clickhouse-backup sidecar in server mode"
+)
+
+
+def backups(limit: int = 20) -> str:
+    return f"""SELECT
+    name,
+    if(required = '', 'full', 'increment') AS kind,
+    created,
+    dateDiff('hour', created, now()) AS age_h,
+    location,
+    formatReadableSize(size) AS size,
+    required AS based_on
+FROM system.backup_list
+ORDER BY created DESC
+LIMIT {int(limit)}"""
+
+
+def backup_actions(limit: int = 20) -> str:
+    # `list` runs on every read of backup_list (including ours), so it is left out.
+    return f"""SELECT
+    command,
+    start,
+    finish,
+    dateDiff('second', start, finish) AS duration_s,
+    status,
+    error
+FROM system.backup_actions
+WHERE command != 'list'
+ORDER BY start DESC
+LIMIT {int(limit)}"""

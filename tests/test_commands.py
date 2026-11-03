@@ -80,6 +80,8 @@ def test_filters_and_limits():
         ["mutations", "--all"],
         ["merges"],
         ["slow", "--since", "24h"],
+        ["backups"],
+        ["backups", "--actions"],
     ],
 )
 def test_print_sql_needs_no_server(argv, capsys, monkeypatch):
@@ -92,3 +94,10 @@ def test_bad_identifier_exit_code(capsys, monkeypatch):
     monkeypatch.setenv("CH_CLI_CONFIG", "/nonexistent")
     assert main(["--print-sql", "fresh", "x;drop", "--ts", "t"]) == 2
     assert "invalid identifier" in capsys.readouterr().err
+
+
+def test_backups_sql():
+    assert "FROM system.backup_list" in commands.backups()
+    assert "if(required = '', 'full', 'increment')" in commands.backups()
+    actions = commands.backup_actions(5)
+    assert "FROM system.backup_actions" in actions and "command != 'list'" in actions and "LIMIT 5" in actions

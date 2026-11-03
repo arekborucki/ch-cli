@@ -56,9 +56,12 @@ Use a read-only user. A profile with `readonly = 2` still lets ch-cli set `log_c
 | `mutations [--all] [-n N]` | unfinished mutations (or recent ones) with the last failure |
 | `merges` | running merges with progress and size |
 | `slow [--since 1h] [--min-ms 1000] [-n N]` | slowest queries from `system.query_log` |
+| `backups [--actions] [-n N]` | [clickhouse-backup](https://github.com/Altinity/clickhouse-backup) backups (full/increment, age, size, base) or recent runs with status and error |
 | `sql [QUERY]` | any query; reads stdin when omitted or `-` |
 
 `disk`, `replicas`, `mutations`, `merges` and `slow` take `-c CLUSTER` to read every replica through `clusterAllReplicas` (a `host` column tells them apart). Without `-c` only the server behind the URL answers, which on a load-balanced service is a random replica, so use `-c` for `slow` and `mutations` on replicated clusters. `health` and `tables` always report the server that receives the query.
+
+`backups` reads the integration tables (`system.backup_list`, `system.backup_actions`) that clickhouse-backup creates in server mode. They proxy its REST API, so they answer only on the server running the sidecar; behind a load balancer, retry or use `--url` for that server.
 
 With `-H`, an empty result prints `(no rows)` on stderr; the default JSON output stays empty.
 

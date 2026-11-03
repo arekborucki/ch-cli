@@ -70,6 +70,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--since", default="1h", help="look back this far (default: 1h)")
     p.add_argument("--min-ms", type=int, default=1000, help="minimum duration (default: 1000)")
     p.add_argument("-n", "--limit", type=int, default=20)
+    p = sub.add_parser(
+        "backups", help="clickhouse-backup: backups and their chain (with --actions: recent runs)"
+    )
+    p.add_argument(
+        "--actions", action="store_true", help="recent create/upload/delete runs with status and error"
+    )
+    p.add_argument("-n", "--limit", type=int, default=20)
     return parser
 
 
@@ -94,6 +101,8 @@ def build_sql(args: argparse.Namespace) -> str:
             return commands.merges(cluster)
         case "slow":
             return commands.slow(args.since, args.min_ms, args.limit, cluster)
+        case "backups":
+            return commands.backup_actions(args.limit) if args.actions else commands.backups(args.limit)
         case "sql":
             return sys.stdin.read() if args.query == "-" else args.query
     raise AssertionError(args.command)
@@ -126,7 +135,12 @@ def run(args: argparse.Namespace) -> int:
         print(client.ping())
         return 0
     fmt = output_format(args)
-    result = client.query(sql, fmt)
+    try:
+        result = client.query(sql, fmt)
+    except QueryError as e:
+        if args.command == "backups":
+            raise QueryError(f"{e}\nhint: {commands.BACKUP_HINT}", e.code) from None
+        raise
     if result:
         sys.stdout.write(result)
     elif fmt.startswith("Pretty"):

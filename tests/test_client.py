@@ -92,3 +92,10 @@ def test_cli_human_format_and_exit_codes(server, monkeypatch, capsys):
     assert FakeClickHouse.seen[-1]["params"]["default_format"] == "PrettyCompactMonoBlock"
     assert main(["--url", server, "sql", "boom"]) == 1
     assert "Syntax error" in capsys.readouterr().err
+
+
+def test_backups_error_adds_hint(server, monkeypatch, capsys):
+    monkeypatch.setenv("CH_CLI_CONFIG", "/nonexistent")
+    monkeypatch.setattr("ch_cli.commands.backups", lambda limit: "boom")
+    assert main(["--url", server, "backups"]) == 1
+    assert "hint: backups needs the clickhouse-backup integration tables" in capsys.readouterr().err
