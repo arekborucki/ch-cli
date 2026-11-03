@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tomllib
 from dataclasses import dataclass
@@ -53,10 +54,15 @@ def _password(name: str, section: dict) -> str:
             return value
         raise ConfigError(f"profile {name!r}: environment variable {env} is not set")
     if cmd := section.get("password_cmd"):
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, check=False)
-        if result.returncode != 0:
-            raise ConfigError(f"profile {name!r}: password_cmd failed: {result.stderr.strip()}")
-        return result.stdout.strip()
+        # pipefail: in `kubectl ... | base64 -d` a kubectl failure would otherwise exit 0 with no output.
+        shell = shutil.which("bash")
+        argv = [shell, "-o", "pipefail", "-c", cmd] if shell else ["/bin/sh", "-c", cmd]
+        result = subprocess.run(argv, capture_output=True, text=True, check=False)
+        password = result.stdout.strip()
+        if result.returncode != 0 or not password:
+            detail = result.stderr.strip().splitlines()[-1:] or ["empty output"]
+            raise ConfigError(f"profile {name!r}: password_cmd failed: {detail[0]}")
+        return password
     return ""
 
 

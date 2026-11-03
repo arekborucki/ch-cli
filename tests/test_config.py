@@ -8,6 +8,8 @@ CONFIG = {
         "a": {"url": "http://a:8123/", "user": "ua", "password_env": "A_PW"},
         "b": {"url": "http://b:8123", "password_cmd": "printf 'secret\\n'"},
         "bad": {"url": "http://c:8123", "password": "inline"},
+        "pipe": {"url": "http://d:8123", "password_cmd": "sh -c 'echo nope >&2; exit 3' | cat"},
+        "empty": {"url": "http://e:8123", "password_cmd": "true"},
     },
 }
 
@@ -54,3 +56,13 @@ def test_env_and_flags_override(monkeypatch):
 def test_no_config_defaults_to_localhost():
     p = resolve_profile({})
     assert (p.url, p.user, p.password) == ("http://localhost:8123", "default", "")
+
+
+def test_password_cmd_failure_inside_a_pipe():
+    with pytest.raises(ConfigError, match="password_cmd failed: nope"):
+        resolve_profile(CONFIG, "pipe")
+
+
+def test_password_cmd_empty_output():
+    with pytest.raises(ConfigError, match="password_cmd failed: empty output"):
+        resolve_profile(CONFIG, "empty")
